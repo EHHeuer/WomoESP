@@ -22,7 +22,7 @@ Zugriff von außerhalb des Heimnetzes nur per VPN (WireGuard oder Tailscale), ke
 
 | Teil | Typ |
 |---|---|
-| Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. `pio run -t upload` klappt; esptool direkt meldete einmal "Wrong boot mode", dann BOOT halten |
+| Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. Auto-Reset in den Download-Modus klappt nicht ("Wrong boot mode 0x13"). Bewährt: `PLATFORMIO_UPLOAD_FLAGS=--connect-attempts=0` setzen, Upload starten, dann BOOT halten, bis er verbindet. Die Variable auch beim Bauen setzen, sonst baut PlatformIO wegen geänderter Konfiguration neu. Dauerhafte Abhilfe: 10 µF zwischen EN und GND |
 | BMS | JBD, TO-DO: Modell und BLE-Name eintragen. MAC vermutlich `a5:c2:37:6e:f6:75` (aus Vorgänger-Firmware, in Phase 1 bestätigen) |
 | MPPT | Victron, TO-DO: SmartSolar (mit BT) oder BlueSolar (ohne BT) |
 | Display | TO-DO: Größe und Controller eintragen |
@@ -165,7 +165,7 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 - [x] Leeres Programm mit `Serial.println` geflasht, Ausgabe sichtbar
 
 ### Phase 1: BMS finden
-- [ ] BLE-Scan flashen (Code unten), JBD anhand von Name, MAC oder Service `0xFF00` identifizieren
+- [ ] BLE-Scan flashen (Code unten), JBD anhand von Name, MAC oder Service `0xFF00` identifizieren (Scan geflasht und läuft dauerhaft, JBD noch nicht in Reichweite getestet)
 - [ ] MAC und Name oben unter Hardware eintragen
 - [ ] Mit nRF Connect (Smartphone) Rohframes für `03` und `04` mitschneiden und unter `test/fixtures/` ablegen
 
