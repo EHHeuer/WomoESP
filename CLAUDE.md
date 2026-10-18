@@ -1,6 +1,6 @@
 # ESP32 Batteriemonitor
 
-**Stand:** 18.10.2026 | Phase 0 (Setup)
+**Stand:** 18.10.2026 | Phase 1 (BMS finden)
 
 ESP32 liest ein JBD-BMS per Bluetooth (BLE) und optional einen Victron-MPPT aus, zeigt die Werte auf einem E-Ink-Display und stellt sie per REST-API im Heim-WLAN bereit. Diese Datei ist gleichzeitig Projektkontext für Claude Code und Arbeitsplan zum Abhaken.
 
@@ -22,7 +22,7 @@ Zugriff von außerhalb des Heimnetzes nur per VPN (WireGuard oder Tailscale), ke
 
 | Teil | Typ |
 |---|---|
-| Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. Auto-Reset in den Download-Modus klappt nicht: beim Upload BOOT halten |
+| Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. `pio run -t upload` klappt; esptool direkt meldete einmal "Wrong boot mode", dann BOOT halten |
 | BMS | JBD, TO-DO: Modell und BLE-Name eintragen. MAC vermutlich `a5:c2:37:6e:f6:75` (aus Vorgänger-Firmware, in Phase 1 bestätigen) |
 | MPPT | Victron, TO-DO: SmartSolar (mit BT) oder BlueSolar (ohne BT) |
 | Display | TO-DO: Größe und Controller eintragen |
@@ -162,7 +162,7 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 - [x] Extensions installiert, Board wird erkannt
 - [x] Projekt angelegt, `platformio.ini` übernommen
 - [x] Git, `.gitignore`, `tools/serial_log.py` (Remote: github.com/EHHeuer/WomoESP)
-- [ ] Leeres Programm mit `Serial.println` geflasht, Ausgabe sichtbar
+- [x] Leeres Programm mit `Serial.println` geflasht, Ausgabe sichtbar
 
 ### Phase 1: BMS finden
 - [ ] BLE-Scan flashen (Code unten), JBD anhand von Name, MAC oder Service `0xFF00` identifizieren
