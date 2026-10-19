@@ -1,6 +1,6 @@
 # ESP32 Batteriemonitor
 
-**Stand:** 18.10.2026 | Phase 1 (BMS finden)
+**Stand:** 19.10.2026 | Phase 2 (BMS auslesen)
 
 ESP32 liest ein JBD-BMS per Bluetooth (BLE) und optional einen Victron-MPPT aus, zeigt die Werte auf einem E-Ink-Display und stellt sie per REST-API im Heim-WLAN bereit. Diese Datei ist gleichzeitig Projektkontext für Claude Code und Arbeitsplan zum Abhaken.
 
@@ -23,7 +23,7 @@ Zugriff von außerhalb des Heimnetzes nur per VPN (WireGuard oder Tailscale), ke
 | Teil | Typ |
 |---|---|
 | Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. Auto-Reset in den Download-Modus klappt nicht ("Wrong boot mode 0x13"). Bewährt: `PLATFORMIO_UPLOAD_FLAGS=--connect-attempts=0` setzen, Upload starten, dann BOOT halten, bis er verbindet. Die Variable auch beim Bauen setzen, sonst baut PlatformIO wegen geänderter Konfiguration neu. Dauerhafte Abhilfe: 10 µF zwischen EN und GND |
-| BMS | JBD, BLE-Name `DP04S007L4S150A` (vermutlich 4S, 150 A), MAC `a5:c2:37:6e:f6:75`, wirbt Service `0xFF00`. Im Scan am 18.10.2026 RSSI -76 bis -90 dBm |
+| BMS | JBD, BLE-Name `DP04S007L4S150A`, MAC `a5:c2:37:6e:f6:75` (public), Service `0xFF00`. 4 Zellen, 1 NTC, Nennkapazität 140,90 Ah, SW-Version 0xD6. RSSI am ESP -76 bis -94 dBm, Verbindung klappt, aber Reichweite knapp |
 | MPPT | Victron, TO-DO: SmartSolar (mit BT) oder BlueSolar (ohne BT) |
 | Display | TO-DO: Größe und Controller eintragen |
 
@@ -140,6 +140,7 @@ Layout Basisdaten (Offset im Datenteil, Big Endian). Gegen eigenen Mitschnitt ve
 | 6-7 | Nennkapazität | 10 mAh |
 | 8-9 | Zyklen | Anzahl |
 | 16-17 | Schutzstatus | Bitfeld |
+| 18 | Softwareversion | |
 | 19 | SoC (RSOC) | % |
 | 20 | FET-Status | Bitfeld |
 | 21 | Zellenzahl | Anzahl |
@@ -167,12 +168,12 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 ### Phase 1: BMS finden
 - [x] BLE-Scan flashen (Code unten), JBD anhand von Name, MAC oder Service `0xFF00` identifizieren
 - [x] MAC und Name oben unter Hardware eintragen
-- [ ] Mit nRF Connect (Smartphone) Rohframes für `03` und `04` mitschneiden und unter `test/fixtures/` ablegen
+- [ ] Mit nRF Connect (Smartphone) Rohframes für `03` und `04` mitschneiden und unter `test/fixtures/` ablegen (`03` vom ESP mitgeschnitten, `04` fehlt noch)
 
 ### Phase 2: BMS auslesen
-- [ ] Parser für JBD-Frames in `lib/protocol/`, Tests mit den Mitschnitten
-- [ ] BLE-Verbindung, Notify abonnieren, Kommandos zyklisch senden
-- [ ] Werte auf Serial ausgeben, gegen Xiaoxiang-App vergleichen
+- [x] Parser für JBD-Frames in `lib/protocol/`, Tests mit den Mitschnitten (Basisdaten `03`)
+- [x] BLE-Verbindung, Notify abonnieren, Kommandos zyklisch senden
+- [ ] Werte auf Serial ausgeben, gegen Xiaoxiang-App vergleichen (Ausgabe inkl. Restlaufzeit läuft, Vergleich mit App offen)
 - [ ] Reconnect testen: BMS aus und ein, außer Reichweite gehen
 
 ### Phase 3: Victron
@@ -244,4 +245,6 @@ void loop() {}
 2. Victron-Modell: entscheidet zwischen BLE Instant Readout und VE.Direct.
 3. Display: Größe und Controller, davon hängt die GxEPD2-Klasse ab.
 4. Stromversorgung des ESP aus der Batterieanlage (Spannungswandler, Eigenverbrauch).
-5. JBD-Layout gegen eigenen Mitschnitt prüfen, Tabelle oben gegebenenfalls korrigieren.
+5. JBD-Layout für `03` am 19.10.2026 gegen eigenen Mitschnitt bestätigt (`test/fixtures/jbd_03_basic.hex`). Die Antwort hat 34 statt 25 Byte, ab Offset 25 folgen Zusatzfelder (u. a. Nennkapazität und Restkapazität erneut), die der Parser ignoriert.
+6. Restlaufzeit nutzt den Momentanstrom und springt bei Lastwechseln. Glättung über einige Minuten vorsehen.
+7. Native Tests brauchen GCC (WinLibs per winget installiert). In Terminals, die vor der Installation geöffnet wurden, fehlt GCC im PATH.

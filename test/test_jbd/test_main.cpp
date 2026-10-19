@@ -28,6 +28,28 @@ static size_t buildBasic(uint8_t* f, int16_t current_10mA) {
   return 7 + sizeof(d);
 }
 
+// Echter Mitschnitt vom eigenen BMS (DP04S007L4S150A), 19.10.2026, siehe test/fixtures/jbd_03_basic.hex
+static const uint8_t REAL_BASIC[] = {
+  0xDD, 0x03, 0x00, 0x22, 0x05, 0x4F, 0x00, 0xC8, 0x36, 0x72, 0x37, 0x0A, 0x00, 0x1C,
+  0x33, 0x15, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD6, 0x63, 0x03, 0x04, 0x01, 0x0B,
+  0x15, 0x00, 0x00, 0x00, 0x37, 0x0A, 0x36, 0x72, 0x00, 0x07, 0xFB, 0x24, 0x77};
+
+void test_real_basic_frame() {
+  Basic b;
+  TEST_ASSERT_TRUE(parseBasic(REAL_BASIC, sizeof(REAL_BASIC), b));
+  TEST_ASSERT_EQUAL_UINT16(1359, b.voltage_10mV);
+  TEST_ASSERT_EQUAL_INT16(200, b.current_10mA);
+  TEST_ASSERT_EQUAL_UINT16(13938, b.remain_10mAh);
+  TEST_ASSERT_EQUAL_UINT16(14090, b.nominal_10mAh);
+  TEST_ASSERT_EQUAL_UINT16(28, b.cycles);
+  TEST_ASSERT_EQUAL_UINT16(0, b.protection);
+  TEST_ASSERT_EQUAL_UINT8(99, b.soc);
+  TEST_ASSERT_EQUAL_UINT8(4, b.cells);
+  TEST_ASSERT_EQUAL_UINT8(1, b.ntc);
+  TEST_ASSERT_EQUAL_INT16(106, b.temp_01C[0]);
+  TEST_ASSERT_EQUAL_INT32(45, minutesToFull(b));
+}
+
 void test_command_checksums() {
   TEST_ASSERT_TRUE(verifyFrame(CMD_BASIC, sizeof(CMD_BASIC)));
   TEST_ASSERT_TRUE(verifyFrame(CMD_CELLS, sizeof(CMD_CELLS)));
@@ -91,6 +113,7 @@ void test_runtime() {
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_command_checksums);
+  RUN_TEST(test_real_basic_frame);
   RUN_TEST(test_parse_basic);
   RUN_TEST(test_bad_checksum_rejected);
   RUN_TEST(test_assembler_split_notifications);
