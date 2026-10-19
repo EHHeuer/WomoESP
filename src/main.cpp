@@ -1,8 +1,16 @@
-// Phase 2: JBD per BLE auslesen, SoC und Restlaufzeit auf Serial ausgeben.
+// JBD per BLE auslesen, SoC und Restlaufzeit per Serial, REST-API und E-Ink-Simulation im WLAN.
 #include <Arduino.h>
+#include <ESPmDNS.h>
 #include <NimBLEDevice.h>
+#include <WebServer.h>
+#include <WiFi.h>
 #include "jbd.h"
+#include "secrets.h"
+#include "state.h"
+#include "status_json.h"
+#include "web_ui.h"
 
+static const char* HOSTNAME = "batterie";
 static const char* BMS_MAC = "a5:c2:37:6e:f6:75";
 static const uint32_t POLL_MS = 5000;
 static const uint32_t RESPONSE_TIMEOUT_MS = 2000;
@@ -90,8 +98,10 @@ static void bmsTask(void*) {
 
   for (;;) {
     if (!client->isConnected()) {
+      stateSetConnected(false);
       rawLogged = false;
       if (!connectBms(client, writeChr)) { vTaskDelay(pdMS_TO_TICKS(POLL_MS)); continue; }
+      stateSetConnected(true);
     }
 
     xQueueReset(chunkQueue);
@@ -117,9 +127,33 @@ static void bmsTask(void*) {
         printHex(assembler.frame(), assembler.frameLen());
         rawLogged = true;
       }
+      stateSetBasic(b);
       printBasic(b);
     }
     vTaskDelay(pdMS_TO_TICKS(POLL_MS));
+  }
+}
+
+static WebServer server(80);
+
+static void handleStatus() {
+  BmsSnapshot s = stateGet();
+  char buf[512];
+  uint32_t now = millis();
+  size_t n = model::statusJson(buf, sizeof(buf), s.valid ? &s.basic : nullptr, s.connected,
+                               (now - s.updated_ms) / 1000, now / 1000);
+  server.sendHeader("Cache-Control", "no-store");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  if (n == 0) server.send(500, "application/json", "{\"error\":\"buffer\"}");
+  else server.send(200, "application/json", buf);
+}
+
+static void onWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+  if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+    Serial.printf("[WLAN] Verbunden, IP %s, http://%s.local/\n",
+      WiFi.localIP().toString().c_str(), HOSTNAME);
+  } else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+    Serial.printf("[WLAN] Getrennt, Grund %u\n", info.wifi_sta_disconnected.reason);
   }
 }
 
@@ -127,9 +161,26 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("WomoESP: BMS-Monitor");
+  stateInit();
   chunkQueue = xQueueCreate(8, sizeof(Chunk));
+
+  WiFi.onEvent(onWifiEvent);
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname(HOSTNAME);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  MDNS.begin(HOSTNAME);
+  MDNS.addService("http", "tcp", 80);
+
+  server.on("/", [] { server.send_P(200, "text/html", INDEX_HTML); });
+  server.on("/api/status", handleStatus);
+  server.begin();
+
   NimBLEDevice::init("");
   xTaskCreatePinnedToCore(bmsTask, "bms", BMS_TASK_STACK, nullptr, 1, nullptr, 0);
 }
 
-void loop() { vTaskDelay(pdMS_TO_TICKS(1000)); }
+void loop() {
+  server.handleClient();
+  vTaskDelay(pdMS_TO_TICKS(2));
+}

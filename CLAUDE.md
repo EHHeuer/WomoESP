@@ -1,6 +1,6 @@
 # ESP32 Batteriemonitor
 
-**Stand:** 19.10.2026 | Phase 2 (BMS auslesen)
+**Stand:** 19.10.2026 | Phase 2 (BMS auslesen) und Phase 5 (WLAN, API) parallel, Display fehlt noch
 
 ESP32 liest ein JBD-BMS per Bluetooth (BLE) und optional einen Victron-MPPT aus, zeigt die Werte auf einem E-Ink-Display und stellt sie per REST-API im Heim-WLAN bereit. Diese Datei ist gleichzeitig Projektkontext für Claude Code und Arbeitsplan zum Abhaken.
 
@@ -173,7 +173,7 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 ### Phase 2: BMS auslesen
 - [x] Parser für JBD-Frames in `lib/protocol/`, Tests mit den Mitschnitten (Basisdaten `03`)
 - [x] BLE-Verbindung, Notify abonnieren, Kommandos zyklisch senden
-- [ ] Werte auf Serial ausgeben, gegen Xiaoxiang-App vergleichen (Ausgabe inkl. Restlaufzeit läuft, Vergleich mit App offen)
+- [x] Werte auf Serial ausgeben, gegen Xiaoxiang-App vergleichen (stimmt überein, 19.10.2026)
 - [ ] Reconnect testen: BMS aus und ein, außer Reichweite gehen
 
 ### Phase 3: Victron
@@ -187,9 +187,10 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 - [ ] Partial Refresh plus periodischer Full Refresh
 
 ### Phase 5: WLAN und API
-- [ ] WLAN-Client mit Zugangsdaten aus `secrets.h`, Reconnect
-- [ ] `GET /api/status` mit JSON inkl. Zeitstempeln
-- [ ] Optional: mDNS (`batterie.local`), MQTT für Home Assistant
+- [ ] WLAN-Client mit Zugangsdaten aus `secrets.h`, Reconnect (verbindet, Auto-Reconnect aktiv, Reconnect noch nicht getestet)
+- [x] `GET /api/status` mit JSON inkl. Zeitstempeln (`age_s`, `stale` ab 30 s)
+- [x] `GET /` simuliert das E-Ink-Display (2,9" oder 4,2", 1 Bit, Teil- und Voll-Refresh), Vorlage für das GxEPD2-Layout
+- [ ] Optional: mDNS (`batterie.local`), MQTT für Home Assistant (mDNS läuft)
 
 ### Phase 6: Dauerbetrieb
 - [ ] 24-h-Test, Heap und Stack beobachten (`ESP.getFreeHeap()`, High-Water-Marks)
@@ -247,4 +248,5 @@ void loop() {}
 4. Stromversorgung des ESP aus der Batterieanlage (Spannungswandler, Eigenverbrauch).
 5. JBD-Layout für `03` am 19.10.2026 gegen eigenen Mitschnitt bestätigt (`test/fixtures/jbd_03_basic.hex`). Die Antwort hat 34 statt 25 Byte, ab Offset 25 folgen Zusatzfelder (u. a. Nennkapazität und Restkapazität erneut), die der Parser ignoriert.
 6. Restlaufzeit nutzt den Momentanstrom und springt bei Lastwechseln. Glättung über einige Minuten vorsehen.
+8. Flash mit BLE plus WLAN zu 83 % belegt (Standard-Partition, 1,25 MB App). Für Display und Victron vermutlich Partition `min_spiffs.csv` (1,9 MB App, OTA bleibt) nötig.
 7. Native Tests brauchen GCC (WinLibs per winget installiert). In Terminals, die vor der Installation geöffnet wurden, fehlt GCC im PATH.
