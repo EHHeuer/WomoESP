@@ -25,7 +25,7 @@ Zugriff von außerhalb des Heimnetzes nur per VPN (WireGuard oder Tailscale), ke
 | Board | Klassischer ESP32 (ROM 29.07.2019, Rev. 3), USB-UART CP210x an COM7, `board = esp32dev`. Auto-Reset in den Download-Modus klappt nicht ("Wrong boot mode 0x13"). Bewährt: `PLATFORMIO_UPLOAD_FLAGS=--connect-attempts=0` setzen, Upload starten, dann BOOT halten, bis er verbindet. Die Variable auch beim Bauen setzen, sonst baut PlatformIO wegen geänderter Konfiguration neu. Dauerhafte Abhilfe: 10 µF zwischen EN und GND |
 | BMS | JBD, BLE-Name `DP04S007L4S150A`, MAC `a5:c2:37:6e:f6:75` (public), Service `0xFF00`. 4 Zellen, 1 NTC, Nennkapazität 140,90 Ah, SW-Version 0xD6. RSSI am ESP -76 bis -94 dBm, Verbindung klappt, aber Reichweite knapp |
 | MPPT | Victron, TO-DO: SmartSolar (mit BT) oder BlueSolar (ohne BT) |
-| Display | TO-DO: Größe und Controller eintragen |
+| Display | Waveshare 1,54" e-Paper Module (Art.-Nr. 12955), 200x200, schwarz/weiß, SPI, 3,3 V, Modul 48 x 33 mm, Teil-Refresh 0,3 s, Voll-Refresh 2 s. Controller: V2 = SSD1681 (`GxEPD2_154_D67`), V1 = IL3829 (`GxEPD2_154`). Version auf der Platine prüfen, noch nicht geliefert |
 
 ## Architektur
 
@@ -183,13 +183,13 @@ UART, 19200 Baud, 8N1, Textprotokoll mit Zeilen `<Feld>\t<Wert>`. Relevante Feld
 
 ### Phase 4: Display
 - [ ] Display mit GxEPD2 in Betrieb nehmen
-- [ ] Layout: SoC groß, Spannung, Strom, PV-Leistung, Alter der Daten
+- [ ] Layout: SoC groß, Spannung, Strom, Restlaufzeit, Alter der Daten, kein Batteriesymbol (Vorlage: Web-Simulation). PV-Leistung kommt mit Phase 3 dazu
 - [ ] Partial Refresh plus periodischer Full Refresh
 
 ### Phase 5: WLAN und API
 - [ ] WLAN-Client mit Zugangsdaten aus `secrets.h`, Reconnect (verbindet, Auto-Reconnect aktiv, Reconnect noch nicht getestet)
 - [x] `GET /api/status` mit JSON inkl. Zeitstempeln (`age_s`, `stale` ab 30 s)
-- [x] `GET /` simuliert das E-Ink-Display (2,9" oder 4,2", 1 Bit, Teil- und Voll-Refresh), Vorlage für das GxEPD2-Layout
+- [x] `GET /` simuliert das E-Ink-Display (1,54", 200x200, 1 Bit, Teil- und Voll-Refresh), Vorlage für das GxEPD2-Layout
 - [ ] Optional: mDNS (`batterie.local`), MQTT für Home Assistant (mDNS läuft)
 
 ### Phase 6: Dauerbetrieb
@@ -244,7 +244,7 @@ void loop() {}
 
 1. Boardvariante: vorhanden ist ein klassischer ESP32 ohne PSRAM. RAM-Reserve für BLE plus WLAN in Phase 6 beobachten.
 2. Victron-Modell: entscheidet zwischen BLE Instant Readout und VE.Direct.
-3. Display: Größe und Controller, davon hängt die GxEPD2-Klasse ab.
+3. Display: entschieden (Waveshare 1,54"). Offen: V1 oder V2, siehe Hardware. Halter aus dem 3D-Drucker für Einbau in die Sitzkonsole.
 4. Stromversorgung des ESP aus der Batterieanlage (Spannungswandler, Eigenverbrauch).
 5. JBD-Layout für `03` am 19.10.2026 gegen eigenen Mitschnitt bestätigt (`test/fixtures/jbd_03_basic.hex`). Die Antwort hat 34 statt 25 Byte, ab Offset 25 folgen Zusatzfelder (u. a. Nennkapazität und Restkapazität erneut), die der Parser ignoriert.
 6. Restlaufzeit nutzt den Momentanstrom und springt bei Lastwechseln. Glättung über einige Minuten vorsehen.
